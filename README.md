@@ -1,0 +1,2 @@
+# goodc
+good c cang
