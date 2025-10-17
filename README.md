@@ -1,5 +1,3 @@
-
-
 # <p align="center">PDSProject1Report</p>
 
 **<p align="center">Masen Wen</p>**
@@ -9,23 +7,15 @@
 ## 两个实验要求
 
 * **要求1：与文件中的数据操作相比，DBMS 的独特优势是什么？**
-  
   * 使用足够大的数据集（我们直接使用平时用的movies和people数据集）将数据同时存储在PostgreSQL数据库表和一个csv文件中 进行两个子实验
-
   * 在 SQL 中使用 SELECT 来查找标题中带有单词“Star”的电影（我们使用DatabaseManipulation类的函数调用SQL），在java实现的FileManipulation类中调用select函数做相同的事，都记录执行时间（我们选择分别在DatabaseManipulation类和FileManipulation类中记录，都在java的Client类里中打印并对比），以体现DBMS的优越性。
-
   * 在 SQL 中使用 UPDATE 将人名中所有的“To”更改为“TTOO”（我们使用DatabaseManipulation类的函数调用SQL），在java实现的FileManipulation类中调用select函数做相同的事，都记录执行时间（我们选择分别在DatabaseManipulation类和FileManipulation类中记录，都在java的Client类里中打印并对比），以体现DBMS的优越性。
 
 * **要求2: 哪个 DBMS 更好？PostgreSQL 还是 OpenGauss，以及采用什么标准？**
-
   * 由于movies数据集不到10000行可能偏小，我们会选择更大的数据集进行进一步实验
-
   * 进行更大规模数据的复杂查询（我们使用DatabaseManipulation类的函数调用各数据库），都记录执行时间（我们选择在DatabaseManipulation类），同理打印并对比，我想我们应该要体现特化了的Opengauss的一些优点。
-
   * 在这个部分分析“数据重组”创建索引的价值
-
   * 在有条件的情况下 使用尽可能大的数据集
-
 
 
 
@@ -33,7 +23,6 @@
 
 
 **根据我对DBMS优势的理解：**
-
 
   |  优势   | 理解  | 
   |  ----  | ----  |
@@ -47,7 +36,6 @@
 
 
 **我的实验要体现出：**
-
 
 * **并发优势验证** 
   * 这依赖于足够大的数据量 以及足够大量的读写（我想update操作会体现出端倪）
@@ -78,25 +66,36 @@
 >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/58d2f423-f962-439e-9922-6ab3e271c7dd.png)
 
 
-# 实现架构
-使用了Lab3的code and data项目
-从华为官网下载了openGauss的驱动.jar包 添加在项目目录下
-配置了PostgreSQL和OpenGauss数据库导入了课上的基础表
-从Kaggle上下载了800万行的 纽约出租车数据 并导入数据库
-划分为四个文件: Size = 8k，80k, 800k, 8M
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/bf1ced30-a3d8-415e-be21-90bb299442ed.png)
+## 实验环境搭建
+
+* **程序骨架**
+  * 使用了Lab3的code and data项目
+* **新增开发库**
+  * 从华为官网下载了openGauss的驱动.jar包 添加在项目目录下
+* **准备DB数据**
+  * 配置了PostgreSQL和OpenGauss数据库导入了课上的基础表
+  * 从Kaggle上下载了800万行的 纽约出租车数据 并导入数据库
+* **准备File数据**
+  * 划分为四个文件: Size = 8k，80k, 800k, 8M
+
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/bf1ced30-a3d8-415e-be21-90bb299442ed.png)
 
 
-# 代码的设计（接口设计）与实现（示例代码）
-实验的设计决定了接口框架有哪些方法
-代码实现里，@retrurn的字符串是方法名称标记和耗时(nm)
+## 实验程序设计：测试功能接口
+
+* **DataManipulation接口设计**
+  * 数据查询功能
+    * 例如String findMovieByTitleLike(String like)
+    * @return的字符串是方法名称标记和耗时(nm)
+  * 数据修改功能
+    * 例如String updateDistance_mt_d(int d, int group)
+    * @return的字符串是方法名称标记和耗时(nm)
+  * 缓存干扰功能
+    * void bustCache()模拟大量访问不同Table的操作“冲掉”上个实验的缓存数据
 
 
 ```Java
-import java.io.IOException;
-
 //
-// DataManipulation接口
 // 我们在这里定义所有要实现的对照组 并且分别用DatabaseManipulation和FileManipulation实例化
 // 最终我们在Client类里调用实验
 //
@@ -104,45 +103,29 @@ public interface DataManipulation {
     //
     // 支持表的创建和基本功能
     //
-
     public void bustCache();
     public int addOneMovie(String str);
     public String findMovieById(int id);
 
-
-    //
-    // Design some experiments and try to answer the following questions:
-    //
-
-    //
+    //======================================================================================
     // Q1. What are the unique advantages of a DBMS compared with data operations in files?
-    //
-
-    //
+    //======================================================================================
     //       实验1.大批量SELECT实验 检索带有‘XXX’(以Star Wars系列为例)的字符串的电影名称 [体现并发/缓存的优势]
     //            组1.调用数据库查询(暖机) [并发+缓存]
     //            组2.调用数据库查询(清理缓存)  [缓存]
     //            组3.调用Java代码查询    [什么都没有]
     //       预期: 组1最快 组2略慢 组3慢很多(由数据规模决定)
-    //
-
     public String findMovieByTitleStrict(String title);
     public String findMovieByTitleLike(String like);
 
-
-    //
     //       实验2.大批量Update实验 将带有‘to’的人名字符串部分替换为'TTOO' [尤其体现并发IO的优势]
     //            组1.调用数据库替换(暖机) [并发+缓存]
     //            组2.调用数据库替换(清理缓存)  [缓存]
     //            组3.调用Java代码替换    [什么都没有]
     //       预期: 组1最快 组2略慢 组3慢很多(比实验1更明显)
-    //
-
     public String updatePeopleNamesTTOO();
     public void refreshTTOO();
 
-
-    //
     //       实验3.使用课上查询优化器例子中本应较差表现的逻辑查询语句
     //            组1.调用数据库查询(好逻辑)[运用查询优化器]
     //            组2.调用数据库查询(差逻辑)[运用查询优化器]
@@ -150,76 +133,64 @@ public interface DataManipulation {
     //            组4.调用Java代码查询    [执行较差的逻辑]
     //       预期: 组1和2不应该有很大差别 组3慢很多 组4再慢很多
     //
-
     public String findMovieByConstraintNationAndReleaseYear_usingGoodLogic(String nation, int year1, int year2);
     public String findMovieByConstraintNationAndReleaseYear_usingBadLogic(String nation, int year1, int year2);
 
-
-    //
+    //======================================================================================
     // Q2. Which DBMS is better? PostgreSQL or openGauss, and by which standard?
-    //
-
-    //
+    //======================================================================================
     //       实验4.大批量SELECT实验 检索带有载有4个人的trip
     //            组1. 8K+
     //            组2. 80K+
     //            组3. 800K+
     //            组4. 8M+
     //       作图: 规模-时间图
-    //
-
     public String findTripOf_n_Passengers(int n, int group);
 
-
-    //
     //       实验5.大批量Update实验 将trip_distance = d的值设为 -d
     //            组1. 8K+
     //            组2. 80K+
     //            组3. 800K+
     //            组4. 8M+
     //       作图: 规模-时间图
-    //
-
     public String updateDistance_mt_d(int d, int group);
     public String refreshDistance_mt_d(int d, int group);
 }
 ```
 
-# 计时的实现
-### 在DataGrip中每条操作记录中有如下时间信息:
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/15c73837-0363-4e39-908f-00353ed79b03.png)
-### 这并不利于对比
-### 我选择直接在Java程序中调取SQL指令，并记录时间(同样是寻找"Star Wars"的代码):
-![148fcfe66b5fcb660fc2612d67a70336.png](3fd5c111-7c1c-4dc3-b4b4-2dbc35a15452.png)
-### 这两者的数值足够接近
-### 下附这段计时对应的代码
-#### 一个Timer类 可以选择用ms或ns计时
+## 实验程序设计：计时功能
 
+在DataGrip中每条操作记录中有如下时间信息，但不方便对比:
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/15c73837-0363-4e39-908f-00353ed79b03.png)
+
+我选择直接在Java程序中调取SQL指令，并记录时间(同样是寻找"Star Wars"的代码):
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/3fd5c111-7c1c-4dc3-b4b4-2dbc35a15452.png)
+
+下附计时类对应的代码，支持选择用ms或ns计时
 
 ```Java
 //
 // 按毫秒进行计时(后续我换成了纳秒)
 //
-
 public class MillisecondTimer {
     private long startTime;
     private long stopTime;
     private boolean isRunning = false;
 
     public void start() {...}
-
     public long stop() {...}
 
-
     public long getElapsedTimeMillis() {...}
-
     public long getElapsedTimeNanos() {...}
-
 }
 ```
 
-#### 在DatabaseManipulation implements DataManipulation类里对每个方法都包装计时
+## 实验程序设计：DataManipulation接口的实现类
 
+* **DataManipulation接口的实现类设计**
+  * 对DB进行SELECT、UPDATE或INSERT等测试
+  * 调用计时包装类MillisecondTimer
+  * 返回结果中包含耗时值
 
 ```Java
 @Override
