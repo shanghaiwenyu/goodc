@@ -14,6 +14,18 @@
   * [实验程序设计-测试功能接口](#实验程序设计-测试功能接口)
   * [实验程序设计-计时功能](#实验程序设计-计时功能)
   * [实验程序设计-DataManipulation接口的实现类](#实验程序设计-DataManipulation接口的实现类)
+* 实验与分析
+  * [Experiment01-Cache对File与DB大数据集查询的影响&并发对Cache的影响](#Experiment01-Cache对File与DB大数据集查询的影响&并发对Cache的影响)
+  * [Experiment02-File与Table大数据集的修改性能比较](#Experiment02-File与Table大数据集的修改性能比较)
+  * [Experiment03-等价的SELECT语句性能比较、执行分析](#Experiment03-等价的SELECT语句性能比较、执行分析)
+  * [Experiment04-File与DB大数据集的查询性能比较](#Experiment04-File与DB大数据集的查询性能比较)
+  * [Experiment05-File与DB大数据集的更新性能比较](#Experiment05-File与DB大数据集的更新性能比较)
+  * [Experiment06-PgSQL与OpenGauss大数据集的读写性能比较](#Experiment06-PgSQL与OpenGauss大数据集的读写性能比较)
+
+
+
+
+
 
 
 
@@ -246,28 +258,30 @@ public class MillisecondTimer {
 
 
 
-# 基础实验实现和防缓存设计
+## **Experiment01-Cache对File与DB查询的影响**  
 
-## **实验1** SELECT * FROM movies WHERE title = 'Star Wars'; 和 SELECT * FROM movies WHERE title LIKE 'Star%';
-## **实验方法**
+SELECT * FROM movies WHERE title = 'Star Wars'的实验程序
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e6d521b9-5c5b-4446-b438-4731b9df871f.png)
+
+SELECT * FROM movies WHERE title LIKE 'Star%'的实验程序
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/0fdc8c53-0609-4f77-a0e1-a77d18eca9b8.png)
-## **实验结果**
-## 1-1
+
+实验结果：非并发场景， title = 'Star Wars'查询
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/f217db01-2f93-4a4f-a9fc-6de23f86b7d6.png)
-## 1-2
+
+实验结果：非并发场景，LIKE 'Star%'查询
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/9cc884ef-1470-4b98-82a1-53abfd2188b7.png)
-## **分析**
-### 在我最初的设想里，DBMS系统最大的性能优势应该是源于并发，而缓存(Cache)只是次之。但一些在movies和people上的小实验（这两个表都只有10000行左右的数据）和重复调试代码的过程让我注意到了**随着重复次数的增加**同一查询的执行时间明显依次递减。以找到"Star Wars"这一部电影的查询为例，缓存（重复执行三次）提升了效率**100多倍**，显然DBMS的缓存模块“记住”了这部电影。 
-### 相应的，在找到"Star Wars"系列电影时，“记忆”就不那么强烈。
-### 现实意义: 这样的例子提醒我们要善于利用Cache机制设计和运用数据库调用
-### 该进: 我们也要意识到缓存在重复实验中的毁灭性影响 这是我问什么尝试实现了一个bustCache()函数
 
-## **bustCache()函数**
 
-### 实验往往需要多次取平均，但多次重复操作会让缓存高度“注意”其相关的行和列，一个立刻会有的想法是分散这种“注意力”。
-### 我实现了一个bustCache()函数，轮番(做个几十次)对几个不在实验中使用的数据库进行查询，这里具体指，以下是这个函数实现的代码:
+* **实验结果分析**
+  * 在我最初的设想里，DBMS系统最大的性能优势应该是源于并发，而缓存(Cache)只是次之。但一些在movies和people上的小实验（这两个表都只有10000行左右的数据）和重复调试代码的过程让我注意到了**随着重复次数的增加**同一查询的执行时间明显依次递减。以找到"Star Wars"这一部电影的查询为例，缓存（重复执行三次）提升了效率**100多倍**，显然DBMS的缓存模块“记住”了这部电影。 
+  * 相应的，在找到"Star Wars"系列电影时，“记忆”就不那么强烈。
+  * 现实意义: 这样的例子提醒我们要善于利用Cache机制设计和运用数据库调用
+  * 改进：我意识到，缓存“搞砸了”上面的实验。所以我要尝试实现了一个bustCache()函数
 
+* **【实验改进】step1-编写bustCache()函数**
+  * 设计思想是：多个查询分别查询不同table，这样才能使Cache数据快速失效，分散Cache“注意力”
+  * 模拟多次重复操作，代码中for (int i = 0; i < 30; i++)
 
 ```Java
 @Override
@@ -301,73 +315,105 @@ public class MillisecondTimer {
     }
 ```
 
-### 效果是有的 但并不明显
-### 这里的8%与上图的18%对应
-### 对于数据库的复杂性来说这并不足以说明太多（即使这可以复现）
-### 这是因为数据库有很大的缓存池 (Cache Pool)
-## **Cache Pool**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/459aa05e-5838-40fd-a409-b5fe10aa3433.png)
-## 设定缓存池的原则
-### DataGrip中的缓存池
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e8fe23fb-5879-4bb7-8fab-d5c60bd6f558.png)
-## 数据库缓存池的争抢和Cache()函数的实际使用情况
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b6227a87-6a65-4a90-b18e-c55805005640.png)
-### 在现实使用中我们往往调用几个表的组合（如movies, people, credits等的组合） 而一个项目里也会有不相关的多个组合同时运作 争抢的程度取决于工程的大小
-### Cache函数倒是可以不错的模拟数据库争抢缓存的一般情况
-## **Cache()的实际效果**
+* **【实验改进】step2-再次运行LIKE 'Star%'查询实验程序**
+
+实验结果：并发场景，LIKE 'Star%'查询
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/f2d8ae04-dc94-45d8-a458-8870a26240a1.png)
 
-## 更加稳妥的方案:结合以下四个操作
-### 1.断开数据库清除数据库缓存或者执行等价的DataGrip操作
+
+* **实验结果分析**
+  * 效果是有的 但并不明显
+  * 这里的8%与上图的18%对应
+  * 对于数据库的复杂性来说这并不足以说明太多（即使这可以复现）
+  * 这是因为数据库有很大的缓存池 (Cache Pool)
+  * Cache基本原理是空间换时间。就是内存占用多了、响应时间短了。
+  * Cache大小的设置影响性能，太大浪费内存、太小影响Cache命中率。
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b6227a87-6a65-4a90-b18e-c55805005640.png)
 
 
+* **【实验改进】更加稳妥的方案:以下四个操作**
+  * 在现实使用中我们往往调用几个表的组合（如movies, people, credits等的组合） 而一个项目里也会有不相关的多个组合同时运作 争抢的程度取决于工程的大小
+  * Cache函数倒是可以不错的模拟数据库争抢缓存的一般情况
+  * 1.断开数据库清除数据库缓存或者执行等价的DataGrip操作
 ```Java
 sudo systemctl restart postgresql
 ```
-
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/777cdac4-b6cc-4516-8d04-2236d3d710a7.png)
+  * 2.重启 尤其对于JavaIO 由于Windows不支持缓存清除 必须重启
+  * 3.使用 bustCache() 添加使用场景下的噪声
+  * 4.设定数据库的缓存池大小（可能不安全）
 
-### 2.重启 尤其对于JavaIO 由于Windows不支持缓存清除 必须重启
 
-### 3.使用 bustCache() 添加使用场景下的噪声
-### 4.设定数据库的缓存池大小（可能不安全）
+**实验中学习的Cache相关知识如下**
+>**Cache Pool**
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/459aa05e-5838-40fd-a409-b5fe10aa3433.png)
+> **DataGrip中的缓存池设置**
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e8fe23fb-5879-4bb7-8fab-d5c60bd6f558.png)
 
-## **实验2**  UPDATE people SET first_name = replace(first_name,'TTOO','to') WHERE first_name LIKE '%TTOO%';
 
-## **实验方法**
+
+
+
+
+
+## **Experiment02-File与Table大数据集的修改性能比较**  
+
+UPDATE people SET first_name = replace(first_name,'TTOO','to') WHERE first_name LIKE '%TTOO%';
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/4833ea4f-87cf-467f-8da4-9149159ef61d.png)
-## **实验结果**
+
+实验结果
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/a5e8e85b-ef10-450f-9b3c-aff68fa89ba6.png)
 
-## **分析**
-### 相较于先前实验，比Java单线程实现提速更多
-### 并发操作大大减少了IO等待浪费的时间
-### 并发的效果在数据量越大时越明显
-### 现实意义: 要有意识的使用多线程读写 这对cpu也没有过多的要求
-### 改进: 可能需要更大的数据集 仅仅几毫秒的运行时间 即使有成倍的关系也不足以令人信服
+* **分析**
+  * 相较于先前实验，比Java单线程实现提速更多
+  * 并发操作大大减少了IO等待浪费的时间
+  * 并发的效果在数据量越大时越明显
+  * 现实意义: 要有意识的使用多线程读写 这对cpu也没有过多的要求
+  * 改进: 可能需要更大的数据集 仅仅几毫秒的运行时间 即使有成倍的关系也不足以令人信服
 
-## **实验3** 对比等价逻辑的不同查询
-### 这两个查询逻辑被认为在执行时是会等价的
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/0dc9d443-f2e0-4717-8cf6-3a4bcfde0b63.png)
-### 让我们来尝试验证一下
-### 鉴于后者的逻辑被认为”本应该“更好，命名为GoodLogic，另一个是BadLogic
+
+
+## **Experiment03-等价的SELECT语句性能比较、执行分析**  
+
+* **下列两个查询：**
+  * 第二个语句的逻辑被认为”本应该“更好，命名为GoodLogic
+  * 另一个命名为BadLogic
+  * 逻辑上，被认为在执行时是会等价的
+  * 查看EXPLAIN的查询计划，因为被DBMS优化的缘故，两个语句执行计划一样
+  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/0dc9d443-f2e0-4717-8cf6-3a4bcfde0b63.png)
+  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/99a52ed8-0a71-4f87-9aa8-8e2f85c3f958.png)
+  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c7a920df-54d2-4726-8274-2b56a4973a59.png)
+  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/8c833a4a-3a0c-4daf-bdd5-d3b74b28ed01.png)
+
+
+
+* **但测试程序跑的结果：性能差3倍，后运行的测试更快。 <mark>这是为什么呢？</mark>**
+  
+  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/1ef718bb-31b8-4960-8703-f451d838aa99.png)
+  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e3ccadb8-09e6-4afd-8a82-611f9bd583a1.png)
+
+
+
+* **排除缓存影响，再次测试，比较发现性能接近. <mark>疑问解除</mark>**
+  * 排除缓存影响：这里分开操作，操作间断开数据库链接并清理缓存。否则先执行的慢很多。
+  * 测试结果(下图)：两个SQL语句性能非常接近。
+  * 结论1：性能接近，是因为它们调用的实际算法是一样的
+  * 结论2：第一次试验后跑的测试的SQL快3倍，是因为后者利用了上一步的缓存
 
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c282a1a2-cdac-451a-91a1-52d64987b6a5.png)
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/bd4e018e-0672-4f77-b35b-fabe04d7e4ea.png)
 
-### 总的来看是差不多的（毕竟他们调用的实际算法是一样的）
-## **EXPLAIN [Execution Plan][Query Plan]**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/99a52ed8-0a71-4f87-9aa8-8e2f85c3f958.png)
-## **EXPLAIN ANALYSIS [Execution Plan][Query Plan]**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c7a920df-54d2-4726-8274-2b56a4973a59.png)
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/8c833a4a-3a0c-4daf-bdd5-d3b74b28ed01.png)
+
+
+
+**实验中学习的EXPLAIN相关知识如下**
+EXPLAIN ANALYSIS [Execution Plan][Query Plan]
+
+
+
 ## 排除缓存影响
 ### 这里分开操作 操作间断开数据库链接并清理缓存
 ### 否则由于缓存问题先执行的必定慢很多
-## **实验方法**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/1ef718bb-31b8-4960-8703-f451d838aa99.png)
-## **实验结果**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e3ccadb8-09e6-4afd-8a82-611f9bd583a1.png)
 
 ### 那么如果没有查询优化器呢？会怎么样呢？
 ### 我按照本来的逻辑写了两段Java代码
@@ -411,12 +457,9 @@ sudo systemctl restart postgresql
     }
 ```
 
-## **实验方法**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/7d9e360b-c663-45ed-ad89-f8503d678dbc.png)
-### 同样也必须分开执行 清理缓存
-## **实验结果**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b4323772-22c6-4247-8659-eeafeec68686.png)
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/24ac7dbc-cd09-47e6-af38-88def442d42c.png)
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/7d9e360b-c663-45ed-ad89-f8503d678dbc.png)
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b4323772-22c6-4247-8659-eeafeec68686.png)
+>![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/24ac7dbc-cd09-47e6-af38-88def442d42c.png)
 
 ## **分析**
 ### 差距并不大（就单这个查询来看）
