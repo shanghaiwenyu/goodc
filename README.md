@@ -7,23 +7,20 @@
 ## Table of Contents
 * 实验要求与思路整理
   * [两个实验要求](#两个实验要求)
-  * [要求1的思路整理过程](#要求1的思路整理过程)
-  * [要求2的思路整理过程](#要求2的思路整理过程)
+  * [实验设计思路](#实验设计思路)
 * 实验环境搭建与实验程序设计
   * [实验环境搭建](#实验环境搭建)
-  * [实验程序设计-测试功能接口](#实验程序设计-测试功能接口)
+  * [下载PostgreSQL源代码](#下载PostgreSQL源代码)
+  * [实验程序设计-测试功能模块](#实验程序设计-测试功能模块)
   * [实验程序设计-计时功能](#实验程序设计-计时功能)
-  * [实验程序设计-DataManipulation接口的实现类](#实验程序设计-DataManipulation接口的实现类)
+  * [实验程序设计-绘图功能](#实验程序设计-绘图功能)
 * 实验与分析
-  * [Experiment01-Cache对File与DB大数据集查询的影响&并发对Cache的影响](#Experiment01-Cache对File与DB大数据集查询的影响&并发对Cache的影响)
-  * [Experiment02-File与Table大数据集的修改性能比较](#Experiment02-File与Table大数据集的修改性能比较)
-  * [Experiment03-等价的SELECT语句性能比较、执行分析](#Experiment03-等价的SELECT语句性能比较、执行分析)
+  * [【缓存】Experiment01-重复3遍提速87倍证明Cache价值](#【缓存】Experiment01-重复3遍提速87倍证明Cache价值)
+  * [【缓存】Experiment02-干扰Cache命中率后无法提速证明Cache工作原理](#【缓存】Experiment02-干扰Cache命中率后无法提速证明Cache工作原理)
+  * [【查询优化器】Experiment03-不同SELECT语句查询计划相同证明DBMS有查询优化器](#【查询优化器】Experiment03-不同SELECT语句查询计划相同证明DBMS有查询优化器)
   * [Experiment04-File与DB大数据集的查询性能比较](#Experiment04-File与DB大数据集的查询性能比较)
   * [Experiment05-File与DB大数据集的更新性能比较](#Experiment05-File与DB大数据集的更新性能比较)
   * [Experiment06-PgSQL与OpenGauss大数据集的读写性能比较](#Experiment06-PgSQL与OpenGauss大数据集的读写性能比较)
-
-
-
 
 
 
@@ -44,7 +41,7 @@
 
 
 
-## 要求1的思路整理过程
+## 实验设计思路
 
 
 **根据我对DBMS优势的理解：**
@@ -70,25 +67,16 @@
   *  我们编写一些逻辑较差的查询来体现查询优化器的作用（课上讲过的两个例子）
 * **索引机制研究**
   * PSQL和OpenGauss实现的索引机制
-
-
-**整理思路过程中，我借助了AI查询知识点。例如我问AI：数据库的五大性能优势是什么（从大到小排列）？**
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/bc543f15-e937-485b-b52f-aba4e31918d2.png)
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/a0fd939d-769e-496a-868e-f143d90887c1.png)
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/054abeb9-5ad8-4af0-8623-efe167b1d051.png)
-
-
-## 要求2的思路整理过程
-
 * **OpenGauss的优势是什么呢？要体现这种细微优势是有难度的**
-  * 大型数据集
-  * 超大量的并发
-  * 复杂逻辑的查询
-  * 索引机制的特化
+  * 1. 超大型数据集（？存疑）
+  * 2. 超大量Client的并发调取（单机实现不现实）
+  * 3. 索引机制的特化
+* **我画了下图，在DBMS架构图上标出我的实验目标（缓存、查询优化器、索引、DBMS内并行）**
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/1设计001.png)
 
-**所以，我借助AI查询知识点。例如：**
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/f9dd8d31-463a-4bb4-954d-066c0ae79e50.png)
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/58d2f423-f962-439e-9922-6ab3e271c7dd.png)
+
+
+
 
 
 ## 实验环境搭建
@@ -103,20 +91,34 @@
 * **准备File数据**
   * 划分为四个文件: Size = 8k，80k, 800k, 8M
 
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/bf1ced30-a3d8-415e-be21-90bb299442ed.png)
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/1设计002.png)
 
 
-## 实验程序设计-测试功能接口
 
-* **DataManipulation接口设计**
-  * 数据查询功能
-    * 例如String findMovieByTitleLike(String like)
-    * @return的字符串是方法名称标记和耗时(nm)
-  * 数据修改功能
-    * 例如String updateDistance_mt_d(int d, int group)
-    * @return的字符串是方法名称标记和耗时(nm)
-  * 缓存干扰功能
-    * void bustCache()模拟大量访问不同Table的操作“冲掉”上个实验的缓存数据
+## 下载PostgreSQL源代码
+
+* 下载PostgreSQL源码安装包
+* 源码是百万级别的 只应当尝试阅读感兴趣的部分
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/2搭建001.png)
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/2搭建002.png)
+
+
+  
+## 实验程序设计-测试功能模块
+
+* **测试功能模块设计**
+  * DataManipulation接口
+    * 数据查询功能
+      * 例如String findMovieByTitleLike(String like)
+      * @return的字符串是方法名称标记和耗时(nm)
+    * 数据修改功能
+      * 例如String updateDistance_mt_d(int d, int group)
+      * @return的字符串是方法名称标记和耗时(nm)
+    * 缓存干扰功能
+      * void bustCache()模拟大量访问不同Table的操作“冲掉”上个实验的缓存数据
+  * 两个接口的实现类
+    * DatabaseManipulation实现类：采用DB存储
+    * FileManipulation实现类：采用File存储
 
 
 ```Java
@@ -184,6 +186,8 @@ public interface DataManipulation {
 ```
 
 
+
+
 ## 实验程序设计-计时功能
 
 在DataGrip中每条操作记录中有如下时间信息，但不方便对比:
@@ -212,74 +216,89 @@ public class MillisecondTimer {
 ```
 
 
-## 实验程序设计-DataManipulation接口的实现类
-
-* **DataManipulation接口的实现类设计**
-  * 对DB进行SELECT、UPDATE或INSERT等测试
-  * 调用计时包装类MillisecondTimer
-  * 返回结果中包含耗时值
-
+## 实验程序设计-绘图功能
 ```Java
-@Override
-    public String findMovieByTitleStrict(String title) {
-        getConnection();
-        MillisecondTimer timer = new MillisecondTimer();
-        timer.start();
-        String result = "";
-        String sql = "select * from movies where title = " + "?";
-        try {
-            PreparedStatement preparedStatement = con.prepareStatement(sql);
-            preparedStatement.setString(1, title);
-            result = "Runtime of this [Database] findMovieByTitleStrict is " + timer.stop() + "ms";
-            resultSet = preparedStatement.executeQuery();
-            // 余下的打印极其耗时 而且不应该记在DBMS的时间内 因为数据已经打包传出了数据库
-            while (resultSet.next()) {
-                String str = "";
-                str += resultSet.getString("movieid");
-                str += ";";
-                str += resultSet.getString("title");
-                str += ";";
-                str += resultSet.getString("country");
-                str += ";";
-                str += resultSet.getString("year_released");
-                str += ";";
-                str += resultSet.getString("runtime");
-                str += ";";
-                //System.out.println(str);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            closeConnection();
-        }
-        return result;
-    }
+import matplotlib.pyplot as plt
+import numpy as np
+
+sizes = ['8K', '80K', '800K', '8M']
+database_runtime = [...]
+file_runtime = [...]
+diff_percent = [...]
+
+x = np.arange(len(sizes))
+width = 0.35
+
+fig, ax1 = plt.subplots(figsize=(9,5))
+bars1 = ax1.bar(x - width/2, database_runtime, width, label='Database', color='#4B8BBE')
+bars2 = ax1.bar(x + width/2, file_runtime, width, label='File', color='#FFD43B')
+
+for bars in [bars1, bars2]:
+    for bar in bars:
+        height = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width()/2, height * 1.05,
+                 f'{height/1e6:.2f}M', ha='center', va='bottom', fontsize=9)
+
+ax1.set_xlabel('Data Size')
+ax1.set_ylabel('Runtime (ns)')
+ax1.set_title('Runtime Comparison: Database vs File')
+ax1.set_xticks(x)
+ax1.set_xticklabels(sizes)
+ax1.set_yscale('log')
+ax1.legend()
+plt.tight_layout()
+plt.show()
 ```
 
 
 
-## **Experiment01-Cache对File与DB查询的影响**  
+## **【缓存】Experiment01-重复3遍提速87倍证明Cache价值**  
 
-SELECT * FROM movies WHERE title = 'Star Wars'的实验程序
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e6d521b9-5c5b-4446-b438-4731b9df871f.png)
+* **SELECT * FROM movies WHERE title = 'Star Wars'的实验程序**
+  * 连续查询3遍
+  * 比较第一次与第三次的查询速度
+* **基于File模拟SELECT title = 'Star Wars'的实验程序**
+  * 连续查询3遍
+  * 比较第一次与第三次的查询速度
+* **基于File、DB实验的交叉对比**
+  * 第1遍：File与DB查询速度比较
+  * 第3遍：File与DB查询速度比较
+ ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e6d521b9-5c5b-4446-b438-4731b9df871f.png)
 
-SELECT * FROM movies WHERE title LIKE 'Star%'的实验程序
+
+* **SELECT * FROM movies WHERE title LIKE 'Star%'的实验程序**
+  * 连续查询3遍
+  * 比较第一次与第三次的查询速度
+* **基于File模拟SELECT title LIKE 'Star%'的实验程序**
+  * 连续查询3遍
+  * 比较第一次与第三次的查询速度
+* **基于File、DB实验的交叉对比**
+  * 第1遍：File与DB查询速度比较
+  * 第3遍：File与DB查询速度比较
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/0fdc8c53-0609-4f77-a0e1-a77d18eca9b8.png)
 
-实验结果：非并发场景， title = 'Star Wars'查询
+* **实验结果：title = 'Star Wars'查询**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/f217db01-2f93-4a4f-a9fc-6de23f86b7d6.png)
 
-实验结果：非并发场景，LIKE 'Star%'查询
+* **实验结果：LIKE 'Star%'查询**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/9cc884ef-1470-4b98-82a1-53abfd2188b7.png)
 
 
 * **实验结果分析**
-  * 在我最初的设想里，DBMS系统最大的性能优势应该是源于并发，而缓存(Cache)只是次之。但一些在movies和people上的小实验（这两个表都只有10000行左右的数据）和重复调试代码的过程让我注意到了**随着重复次数的增加**同一查询的执行时间明显依次递减。以找到"Star Wars"这一部电影的查询为例，缓存（重复执行三次）提升了效率**100多倍**，显然DBMS的缓存模块“记住”了这部电影。 
-  * 相应的，在找到"Star Wars"系列电影时，“记忆”就不那么强烈。
-  * 现实意义: 这样的例子提醒我们要善于利用Cache机制设计和运用数据库调用
-  * 改进：我意识到，缓存“搞砸了”上面的实验。所以我要尝试实现了一个bustCache()函数
+  * DB查询
+    * 第1遍9961900ns
+    * 第3遍 113800ns。提速87倍，证明了DB Cache的价值
+ * 现实意义:
+   * 这样的例子提醒我们要善于利用Cache机制设计和运用数据库调用
+   * 在我最初的设想里，DBMS系统最大的性能优势应该是源于并发，而缓存(Cache)只是次之。但一些在movies和people上的小实验（这两个表都只有10000行左右的数据）和重复调试代码的过程让我注意到了**随着重复次数的增加**同一查询的执行时间明显依次递减。以找到"Star Wars"这一部电影的查询为例，缓存（重复执行三次）提升了效率**87倍**，显然DBMS的缓存模块“记住”了这部电影。 
+   * 相应的，在找到"Star Wars"系列电影时，“记忆”就不那么强烈。
+ * 后续实验，我要尝试实现了一个bustCache()函数，干扰Cache效率
 
-* **【实验改进】step1-编写bustCache()函数**
+
+
+## **【缓存】Experiment02-干扰Cache命中率后无法提速证明Cache工作原理**  
+
+* **step1-编写bustCache()函数**
   * 设计思想是：多个查询分别查询不同table，这样才能使Cache数据快速失效，分散Cache“注意力”
   * 模拟多次重复操作，代码中for (int i = 0; i < 30; i++)
 
@@ -315,11 +334,12 @@ SELECT * FROM movies WHERE title LIKE 'Star%'的实验程序
     }
 ```
 
-* **【实验改进】step2-再次运行LIKE 'Star%'查询实验程序**
+* **step2-调整DBMS配置，把Cache值改得很小，确保bustCache()干扰缓存效果**
+![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e8fe23fb-5879-4bb7-8fab-d5c60bd6f558.png)
 
-实验结果：并发场景，LIKE 'Star%'查询
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/f2d8ae04-dc94-45d8-a458-8870a26240a1.png)
 
+* **step3-再次运行title = 'Star Wars查询实验程序**
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/3缓存实验001.png)
 
 * **实验结果分析**
   * 效果是有的 但并不明显
@@ -328,10 +348,45 @@ SELECT * FROM movies WHERE title LIKE 'Star%'的实验程序
   * 这是因为数据库有很大的缓存池 (Cache Pool)
   * Cache基本原理是空间换时间。就是内存占用多了、响应时间短了。
   * Cache大小的设置影响性能，太大浪费内存、太小影响Cache命中率。
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b6227a87-6a65-4a90-b18e-c55805005640.png)
+![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b6227a87-6a65-4a90-b18e-c55805005640.png)
 
 
-* **【实验改进】更加稳妥的方案:以下四个操作**
+* **看PostgreSQL网课 学习缓存机制原理**
+  * 这部分内容来自: PostgreSQL源码分析 系列文章十余篇 CSDN
+  * 内容对学生而言较难 选取了少量内容
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/3缓存实验002.png)
+
+* **看PostgreSQL源码 cache部分**
+  * 看源码[...\cache]
+  * 以下出现的源码在文件目录："src/backend/util/cache"
+  * SysCache用于缓存系统表元组
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/3缓存实验-代码阅读001.png)
+
+
+* **看PostgreSQL源码 cache部分**
+  * RelCache用于表模式信息缓存
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/3缓存实验-代码阅读002.png)
+
+
+* **看PostgreSQL源码 cache部分**
+  * 源码中进行查询的部分
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/3缓存实验-代码阅读003.png)
+
+
+* **看PostgreSQL源码 cache部分**
+  * 缓冲的争抢
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/3缓存实验-代码阅读004.png)
+
+
+* **现在我们可以全面的解释:**
+  * 为什么缓存大大加速了查询？
+    * 因为缓存豁免了IO时间
+    * 通过实现了系统表元组和表模式信息缓存的哈希表/桶快速映射 本质是一种索引
+  * 为什么尤其在中小规模数据中有用？
+    * 因为缓存豁免的时间是受空间限制的
+    * 如果缓存空间（如缓存池）被占用殆尽 数据库会通过释放较老的缓存来腾出空间
+    
+* **更加稳妥的方案:以下四个操作**
   * 在现实使用中我们往往调用几个表的组合（如movies, people, credits等的组合） 而一个项目里也会有不相关的多个组合同时运作 争抢的程度取决于工程的大小
   * Cache函数倒是可以不错的模拟数据库争抢缓存的一般情况
   * 1.断开数据库清除数据库缓存或者执行等价的DataGrip操作
@@ -344,87 +399,71 @@ sudo systemctl restart postgresql
   * 4.设定数据库的缓存池大小（可能不安全）
 
 
-**实验中学习的Cache相关知识如下**
->**Cache Pool**
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/459aa05e-5838-40fd-a409-b5fe10aa3433.png)
-> **DataGrip中的缓存池设置**
->![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e8fe23fb-5879-4bb7-8fab-d5c60bd6f558.png)
 
 
 
 
 
-
-
-## **Experiment02-File与Table大数据集的修改性能比较**  
-
-UPDATE people SET first_name = replace(first_name,'TTOO','to') WHERE first_name LIKE '%TTOO%';
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/4833ea4f-87cf-467f-8da4-9149159ef61d.png)
-
-实验结果
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/a5e8e85b-ef10-450f-9b3c-aff68fa89ba6.png)
-
-* **分析**
-  * 相较于先前实验，比Java单线程实现提速更多
-  * 并发操作大大减少了IO等待浪费的时间
-  * 并发的效果在数据量越大时越明显
-  * 现实意义: 要有意识的使用多线程读写 这对cpu也没有过多的要求
-  * 改进: 可能需要更大的数据集 仅仅几毫秒的运行时间 即使有成倍的关系也不足以令人信服
-
-
-
-## **Experiment03-等价的SELECT语句性能比较、执行分析**  
+## **【查询优化器】Experiment03-不同SELECT语句查询计划相同证明DBMS有查询优化器**  
 
 * **下列两个查询：**
   * 第二个语句的逻辑被认为”本应该“更好，命名为GoodLogic
   * 另一个命名为BadLogic
   * 逻辑上，被认为在执行时是会等价的
-  * 查看EXPLAIN的查询计划，因为被DBMS优化的缘故，两个语句执行计划一样
-  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/0dc9d443-f2e0-4717-8cf6-3a4bcfde0b63.png)
+  ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/0dc9d443-f2e0-4717-8cf6-3a4bcfde0b63.png)
+
+
+
+* **查看EXPLAIN的查询计划**
+  * 两个语句执行计划一样
+  * 证明DBMS有查询优化器
+
+EXPLAIN [Execution Plan][Query Plan]
   >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/99a52ed8-0a71-4f87-9aa8-8e2f85c3f958.png)
-  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c7a920df-54d2-4726-8274-2b56a4973a59.png)
-  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/8c833a4a-3a0c-4daf-bdd5-d3b74b28ed01.png)
 
-
-
-* **但测试程序跑的结果：性能差3倍，后运行的测试更快。 <mark>这是为什么呢？</mark>**
-  
-  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/1ef718bb-31b8-4960-8703-f451d838aa99.png)
-  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e3ccadb8-09e6-4afd-8a82-611f9bd583a1.png)
-
-
-
-* **排除缓存影响，再次测试，比较发现性能接近. <mark>疑问解除</mark>**
-  * 排除缓存影响：这里分开操作，操作间断开数据库链接并清理缓存。否则先执行的慢很多。
-  * 测试结果(下图)：两个SQL语句性能非常接近。
-  * 结论1：性能接近，是因为它们调用的实际算法是一样的
-  * 结论2：第一次试验后跑的测试的SQL快3倍，是因为后者利用了上一步的缓存
-
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c282a1a2-cdac-451a-91a1-52d64987b6a5.png)
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/bd4e018e-0672-4f77-b35b-fabe04d7e4ea.png)
-
-
-
-
-**实验中学习的EXPLAIN相关知识如下**
 EXPLAIN ANALYSIS [Execution Plan][Query Plan]
+  >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c7a920df-54d2-4726-8274-2b56a4973a59.png)
 
 
+* **查询优化器 原理学习**
+  * 找文章来读
+    * 来自文章: Postgresql中的explain https://www.cnblogs.com/flying-tiger/p/8039055.html
+  * 归纳总结
+    * 数据库可以做一些基元操作{opertaion1..operationn)
+    * 这些操作具有相对稳定的时间{runtime....runtimen}
+    * 一个实际操作可以由一系列基元操作复合而成
+    * 复合方式不止一种 有的逻辑效率很高（如利用索引直接找到） 有的则有限（遍历）
+  * 设计思想
+    * 用算法找到(被认为)最高效的查询逻辑 执行这个逻辑
+    * 找到最优的操作组合的搜索时间 << 执行时间
+    * 最优的操作组合包括：用索引、用缓存、并行等
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/4查询优化器003.png)
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/4查询优化器004.png)
 
-## 排除缓存影响
-### 这里分开操作 操作间断开数据库链接并清理缓存
-### 否则由于缓存问题先执行的必定慢很多
 
-### 那么如果没有查询优化器呢？会怎么样呢？
-### 我按照本来的逻辑写了两段Java代码
+* **查询优化器 代码阅读**
+  * 代码目录: src\backend\optimizer\plan
+    * 参考文章: 跟我一起读postgresql源码(五)——Planer(查询规划模块)
+    * https://www.cnblogs.com/flying-tiger/p/6063709.html
+    * 下图信息来源于这一文章和实际实验
+  * 根据源码逻辑 优化主要在两个环节里进行
+    * 1.预处理: 通过 向上提取(pull_up_) 减少逻辑中的浪费
+    * 2.动态规划（或遗传算法）找到最优路径（代价最低和排序最优）
+  * 最终返回优化了的 查询计划树
+    * EXPLAIN在这个环节调取 查询计划树 （EXPLAIN并不真正执行）
+    * 释放中间的过程树结构空间
+    * 然后这个结果可以执行
+    * EXPLAIN ANALYSIS用这个 查询计划实际执行 并返回时间
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/4查询优化器-代码阅读001.png)
 
 
+* **对照实验：用File模拟**
+  * 那么如果没有查询优化器呢？会怎么样呢？
+  * 我按照本来的逻辑写了两段Java代码
 ```Java
 @Override
     public String findMovieByConstraintNationAndReleaseYear_usingGoodLogic(String nation, int year1, int year2) {
-        
         ...
-        
             while ((line = reader.readLine()) != null) {
                 String[] movie = line.split(";");
                 if (movie[2].equals(nation) && (Integer.parseInt(movie[3]) >= year1 && Integer.parseInt(movie[3]) <= year2)) {
@@ -434,12 +473,9 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
         ...
     }
 
-
     @Override
     public String findMovieByConstraintNationAndReleaseYear_usingBadLogic(String nation, int year1, int year2) {
-
         ...
-        
             List<String> selectedContent = new ArrayList<>();
             while ((line = reader.readLine()) != null) {
                 String[] movie = line.split(";");
@@ -457,17 +493,18 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
     }
 ```
 
+* **实验与结果分析**
+  * 差距并不大（就单这个查询来看）
+  * 查询优化器本身需要花费时间
+  * 这个优化的效果在数据更大时显然会更明显
+  * 现实意义: 要有意识的审视自己逻辑是否为最佳 有些情况查询优化器可能不会考虑到
+  * 改进: 可能需要更大的数据集 体现出查询优化器的价值
 >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/7d9e360b-c663-45ed-ad89-f8503d678dbc.png)
 >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b4323772-22c6-4247-8659-eeafeec68686.png)
 >![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/24ac7dbc-cd09-47e6-af38-88def442d42c.png)
 
-## **分析**
-### 差距并不大（就单这个查询来看）
-### 查询优化器本身需要花费时间
-### 这个优化的效果在数据更大时显然会更明显
-### 现实意义: 要有意识的审视自己逻辑是否为最佳 有些情况查询优化器可能不会考虑到
-### 改进: 可能需要更大的数据集 体现出查询优化器的价值
-#
+
+
 
 # 实现了更大数据集的实验
 
@@ -553,6 +590,28 @@ COPY movies FROM '______.csv' WITH CSV HEADER;
 ### 除了调整内存还需要调整虚拟机供用内存
 ### 对于运行时间 超时会回滚
 ### 保证运行时间上限为0（不设限）
+
+
+
+
+
+
+
+## **【并发】Experiment03-File与Table大数据集的修改性能比较**  
+
+UPDATE people SET first_name = replace(first_name,'TTOO','to') WHERE first_name LIKE '%TTOO%';
+![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/4833ea4f-87cf-467f-8da4-9149159ef61d.png)
+
+实验结果
+![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/a5e8e85b-ef10-450f-9b3c-aff68fa89ba6.png)
+
+* **分析**
+  * 相较于先前实验，比Java单线程实现提速更多
+  * 并发操作大大减少了IO等待浪费的时间
+  * 并发的效果在数据量越大时越明显
+  * 现实意义: 要有意识的使用多线程读写 这对cpu也没有过多的要求
+  * 改进: 可能需要更大的数据集 仅仅几毫秒的运行时间 即使有成倍的关系也不足以令人信服
+
 
 ## **大批量实验**
 
