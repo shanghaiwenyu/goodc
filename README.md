@@ -4,7 +4,7 @@
 **<p align="center">2025-10-18</p>**
 
 
----
+
 
 ## Table of Contents
 * 实验要求与思路整理
@@ -21,8 +21,11 @@
   * [Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理](#Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理)
   * [Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器](#Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器)
   * [Experiment04——【使用工具】导入800万条记录](#Experiment04——【使用工具】导入800万条记录)
-  * [Experiment05-File与DB大数据集的更新性能比较](#Experiment05-File与DB大数据集的更新性能比较)
-  * [Experiment06-PgSQL与OpenGauss大数据集的读写性能比较](#Experiment06-PgSQL与OpenGauss大数据集的读写性能比较)
+  * [Experiment05——【大数据集】8千到800万条数据的查询、修改性能](#Experiment05——【大数据集】8千到800万条数据的查询、修改性能)
+  * [Experiment06——【并行】Postgresql并行执行](#Experiment06——【并行】Postgresql并行执行)
+  * [Experiment07——PgSQL与OpenGauss大数据集的读写性能比较](#Experiment07——PgSQL与OpenGauss大数据集的读写性能比较)
+
+
 
 ---
 
@@ -295,8 +298,9 @@ plt.show()
   * 相应的，在找到"Star Wars"系列电影时，“记忆”就不那么强烈。
 * 后续实验，我要尝试实现了一个bustCache()函数，干扰Cache效率
 
-  
-  
+
+---
+
 ## **Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理**  
 
 * **step1-编写bustCache()函数**
@@ -389,22 +393,22 @@ plt.show()
     
 * **更加稳妥的方案:以下四个操作**
   * 在现实使用中我们往往调用几个表的组合（如movies, people, credits等的组合） 而一个项目里也会有不相关的多个组合同时运作 争抢的程度取决于工程的大小
-  * Cache函数倒是可以不错的模拟数据库争抢缓存的一般情况
-  * 1.断开数据库清除数据库缓存或者执行等价的DataGrip操作
+  * bustCache() 函数倒是可以不错的模拟数据库争抢缓存的一般情况
+    * 1.断开数据库清除数据库缓存或者执行等价的DataGrip操作
+    * 2.重启 尤其对于JavaIO 由于Windows不支持缓存清除 必须重启
+    * 3.使用 bustCache() 添加使用场景下的噪声
+    * 4.设定数据库的缓存池大小（可能不安全）
 ```Java
 sudo systemctl restart postgresql
 ```
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/777cdac4-b6cc-4516-8d04-2236d3d710a7.png)
-  * 2.重启 尤其对于JavaIO 由于Windows不支持缓存清除 必须重启
-  * 3.使用 bustCache() 添加使用场景下的噪声
-  * 4.设定数据库的缓存池大小（可能不安全）
 
 
 
 
 
-  
-  
+---
+
 ## **Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器**  
 
 * **下列两个查询：**
@@ -463,35 +467,35 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
   * 我按照本来的逻辑写了两段Java代码
 ```Java
 @Override
-    public String findMovieByConstraintNationAndReleaseYear_usingGoodLogic(String nation, int year1, int year2) {
-        ...
-            while ((line = reader.readLine()) != null) {
-                String[] movie = line.split(";");
-                if (movie[2].equals(nation) && (Integer.parseInt(movie[3]) >= year1 && Integer.parseInt(movie[3]) <= year2)) {
-                    //System.out.println(line);
-                }
-            }
-        ...
-    }
+public String findMovieByConstraintNationAndReleaseYear_usingGoodLogic(String nation, int year1, int year2) {
+   ...
+   while ((line = reader.readLine()) != null) {
+      String[] movie = line.split(";");
+      if (movie[2].equals(nation) && (Integer.parseInt(movie[3]) >= year1 && Integer.parseInt(movie[3]) <= year2)) {
+          //System.out.println(line);
+      }
+   }
+   ...
+ }
 
-    @Override
-    public String findMovieByConstraintNationAndReleaseYear_usingBadLogic(String nation, int year1, int year2) {
-        ...
-            List<String> selectedContent = new ArrayList<>();
-            while ((line = reader.readLine()) != null) {
-                String[] movie = line.split(";");
-                if (movie[2].equals(nation)) {
-                    selectedContent.add(line);
-                }
-            }
-            for (String contentLine : selectedContent) {
-                String[] movie = contentLine.split(";");
-                if ((Integer.parseInt(movie[3]) >= year1 && Integer.parseInt(movie[3]) <= year2)) {
-                    //System.out.println(contentLine);
-                }
-            }
-        ...
-    }
+ @Override
+ public String findMovieByConstraintNationAndReleaseYear_usingBadLogic(String nation, int year1, int year2) {
+     ...
+     List<String> selectedContent = new ArrayList<>();
+     while ((line = reader.readLine()) != null) {
+         String[] movie = line.split(";");
+         if (movie[2].equals(nation)) {
+             selectedContent.add(line);
+         }
+     }
+     for (String contentLine : selectedContent) {
+         String[] movie = contentLine.split(";");
+         if ((Integer.parseInt(movie[3]) >= year1 && Integer.parseInt(movie[3]) <= year2)) {
+             //System.out.println(contentLine);
+         }
+     }
+     ...
+ }
 ```
 
 * **实验与结果分析**
@@ -506,8 +510,9 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
 
 
 
-  
-  
+
+---
+
 ## **Experiment04——【使用工具】导入800万条记录**  
 
 * **Step1：从Kaggle获取数据表8-Million-Lines的csv数据文件**
@@ -525,10 +530,10 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
 
 
 * **Step3：建如下四个table并载入数据**
-* 表1. 8K+
-* 表2. 80K+
-*	表3. 800K+
-*	表4. 8M+
+  * 表1. 8K+
+  * 表2. 80K+
+  *	表3. 800K+
+  *	表4. 8M+
 ![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/5大批量实验001.png)
 
 
@@ -537,27 +542,6 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
   * [bash] \copy
   * [SQL] COPY
   * pg_dump 功能和普通Import不同，更快更稳定
-
-
-# 实现了更大数据集的实验
-
-#### **后续的实验都是整批完成 实现了缓存清理（每轮重连数据库/重启）**
-### 从Kaggle获取数据表8-Million-Lines
-
-
-## **\copy COPY 和 pg_dump IMPORT** (在这里走了很多弯路)
-
-## 导入可以使用四种方式
-### 直接导入 如上图 要注意先创建有列的表格并一一对应导入 否则会出现失败回滚
-### **[bash] \copy** 
-
-
-```Java
-\copy movies FROM '______.csv' WITH CSV HEADER
-```
-
-### 具体实现是复杂但可行的
-
 
 ```Java
 mm=>
@@ -595,127 +579,116 @@ rate_code | store_and_forward | end_lon | end_lat | payment_type | fare_amt | su
 +-----------
 (0 rows)
 ```
-
-### **[SQL] COPY**
-
-
-```Java
-COPY movies FROM '______.csv' WITH CSV HEADER;
-```
-
-### **pg_dump**
-### 功能和普通Import不同
-### 更快更稳定
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/889d1125-c110-4f94-9081-96a1f851f697.png)
 
 
-### 要导入的数据大小为2GB+
-### 默认的750MB填满后就会回滚
-### 除了调整内存还需要调整虚拟机供用内存
-### 对于运行时间 超时会回滚
-### 保证运行时间上限为0（不设限）
 
 
 
+---
 
+## **Experiment05——【大数据集】8千到800万条数据的查询、修改性能**  
 
-
-
-## **【并发】Experiment03-File与Table大数据集的修改性能比较**  
-
-UPDATE people SET first_name = replace(first_name,'TTOO','to') WHERE first_name LIKE '%TTOO%';
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/4833ea4f-87cf-467f-8da4-9149159ef61d.png)
-
-实验结果
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/a5e8e85b-ef10-450f-9b3c-aff68fa89ba6.png)
-
-* **分析**
-  * 相较于先前实验，比Java单线程实现提速更多
-  * 并发操作大大减少了IO等待浪费的时间
-  * 并发的效果在数据量越大时越明显
-  * 现实意义: 要有意识的使用多线程读写 这对cpu也没有过多的要求
-  * 改进: 可能需要更大的数据集 仅仅几毫秒的运行时间 即使有成倍的关系也不足以令人信服
-
-
-## **大批量实验**
-
-## **实验方法**
-## 查询实验
+* **8千到800万条数据的查询性能比较**
+  * 运行实验
+  * 实验结果
+  * 柱状图对比
+* **实验结果分析** 
+  * 对于大型数据集 数据库的优秀表现是可以预见的
+  * 通过[并行or批量处理]的优化（控制变量:缓存被及时清理限制了）越大的数据集越倾向于表现出优越的性能
+  * 相比之下 JavaIO的表现并不差 较为稳定的每10倍时间增加3-5倍
+  * 产生疑问: 在甄别是哪个导致了优化上产生了疑问
+![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b987d5fa-d430-449c-8749-9f327ab242c7.png)
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/04aa3f6a-928d-4931-aebe-94c3605d0af0.png)
-
-## **实验结果**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/ed832588-ab0e-4084-9195-4d4b810837d7.png)
 
-## **可视化**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b987d5fa-d430-449c-8749-9f327ab242c7.png)
 
-## **分析**
-### 对于大型数据集 数据库的优秀表现是可以预见的
-### 通过并发的优化（控制变量:缓存被及时清理限制了）越大的数据集越倾向于表现出优越的性能
-### 相比之下 JavaIO的表现并不差 较为稳定的每10倍时间增加3-5倍
-### **并发处理**
-
-## **实验方法**
-## 更新实验
+* **8千到800万条数据的Update性能比较**
+  * 运行实验
+  * 实验结果
+  * 柱状图对比
+* **实验结果分析**
+  * 对于高IO的情况是类似的
+* **归因**
+  * 批量操作会一次读写一批数据 减少IO时间
+  * 并行操作会解放cpu 减少IO等待的浪费
+  * 疑问: 这仍然不能区分两者
+![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/243fa742-07e6-4d20-b9d1-246435bcf539.png)
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/689ff905-bff7-45b1-a4ca-b144038bfb7b.png)
-## **实验结果**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b432fe03-d998-4ae9-899a-86dafbe893d7.png)
 
-## **可视化**
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/243fa742-07e6-4d20-b9d1-246435bcf539.png)
 
-## **分析**
-### 对于高IO的情况是类似的
-## **归因**
 
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/8c22da37-f76e-42fe-8c0e-4dc6180c023f.png)
+---
 
-### **分区和索引**
+## **Experiment06——【并行】Postgresql并行执行**  
 
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/03ef22f9-24f5-4c8f-bdbc-f4f978b6b6e1.png)
 
-### **分区处理的源代码**
-#
+* **并行和批量操作**
+  * 是截然不同的优化方式
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/5大批量实验003.png)
 
-# OpenGauss和PostgreSQL的大数据集性能对比
+* **看文章 理解Postgresql并行执行**
+  * 文章: Postgresql源码（109）并行框架实例与分析
+  * https://cloud.tencent.com/developer/article/2339809
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/6并行实验001.png)
 
-## 一些猜测
-### 对OpenGauss了解很少
-### OpenGauss对格式/输入/操作质量的要求都远远更高
-### 例如OpenGauss不允许使用su用户连接DataGrip
-### 例如OpenGauss强制要求su用户有高安全度密码
-### 例如OpenGauss提供了系统的日志文件和日志输出（驱动会报红）
-### 例如OpenGauss报错了psql不报错的.sql文件
+* **看代码 理解Postgresql并行执行**
+  * 看源码[...\plan]
+  * 并行计划的源代码（查询优化器会决定是否使用并行）
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/6并行实验-代码阅读001.png)
 
+* **学习收获**
+  * 检查并行参数 并行在实验中被支持（默认值）
+  * 检查具体使用 Quiery Plan告诉我们并行没有被执行
+  * 并行适用的场景
+    * 使用并行有巨大的一次成本（硬件投入）
+    * 大数据量&较复杂操作（多读写）时倾向于被使用
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/6并行实验002.png)
+
+
+---
+
+## **Experiment07——PgSQL与OpenGauss大数据集的读写性能比较**
+
+
+* **就我的感性认识而言，OpenGauss对格式/输入/操作质量的要求都远远更高**
+  *	例如OpenGauss不允许使用su用户连接DataGrip
+  *	例如OpenGauss强制要求su用户有高安全度密码
+  *	例如OpenGauss提供了系统的日志文件和日志输出（驱动会报红）
+  *	例如OpenGauss报错了psql不报错的.sql文件
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/bd369a80-bb67-4138-9487-f8d41fb98261.png)
 
-## **实验方法**
-## 查询实验
+
+* **进行了4组查询实验**
+  * 数据量逐次增大，每轮实验后重连数据库/重启，确保缓存清理。
+    * 组1. 8K+
+    * 组2. 80K+
+    * 组3. 800K+
+    * 组4. 8M+
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/5db9eb81-3e5b-49c7-9086-f7a7722c8dd7.png)
-## **实验结果**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/17e2dfb9-489b-4d83-9e3d-37abd953a7e3.png)
-## **可视化**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/161920ed-a7b0-42fd-92eb-19e3d105be6d.png)
-## **实验方法**
-## 更新实验
+
+
+
+* **进行了4组Update实验**
+  * 数据量逐次增大，每轮实验后重连数据库/重启，确保缓存清理。
+    * 组1. 8K+
+    * 组2. 80K+
+    * 组3. 800K+
+    * 组4. 8M+
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/5b75dc53-8874-4c37-805b-3dbfbae40150.png)
-## **实验结果**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/0c89c66f-c278-4e5d-a137-c597d60b145c.png)
-## **可视化**
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/e5b6a174-965c-4b62-9ae9-f606ab1a8edd.png)
-## **分析**
-### 课上曾经提及:尽管OpenGauss优化了psql 但是其表现缺常常不如psql
-### 就这一实验来看OpenGauss的表现不如psql
-### 可能在**更大**的数据上OpenGauss会更好 但是我不打算尝试**更大**的数据集
+
+
+* **汇总分析**
+  * 课上曾经提及:尽管OpenGauss优化了psql 但是其表现缺常常不如psql
+  * 就这一实验来看OpenGauss的表现不如psql
+  * 可能在更大的数据上OpenGauss会更好 但是我不打算尝试更大的数据集
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/797a7dbd-e70e-4ddd-bf92-9a12266837d4.png)
-### 在8000万行数据附近 psql还在随着数据集变大而更加胜出
-### 这意味着所谓**更大**可能比较遥远
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/b8e8a1b5-ee55-4c14-b7fe-390084147688.png)
-### 我对AI的分析持保留意见
-### 我倾向于认为OpenGauss的优化不是在这个场景和方向上努力的 否则它无疑是失败的
 
-# End of BassLine
-#### 这一部分耗时5天 导入表花费了我一整天 设计实验和编写代码花费了较多的时间 处理缓存影响的几个尝试无疑是重要的（否则实验无法进行）
 
-# Extra Attempts
 
