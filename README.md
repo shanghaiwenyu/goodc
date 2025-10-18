@@ -506,17 +506,43 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
 
 
 
+
+## **【工具使用】Experiment04-导入800万条记录**  
+
+* **Step1：从Kaggle获取数据表8-Million-Lines的csv数据文件**
+ ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c6ee14f3-1d33-4373-a2ff-e9a729ccbda0.png)
+
+
+* **Step2：数据导入前的设置准备--设置内存和时间**
+  * 避免导入失败
+    * 要导出的数据大小为2GB+，默认的750MB填满后就会回滚。
+    * 另外，运行时间超，也会回滚。
+  * 所以我调整了：
+    * 虚拟机供用内存大小、
+    * 和时间上限大小（为0代表不设限）
+ ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/936fb094-781e-46fd-bcf3-a16508792e1f.png)
+
+
+* **Step3：建如下四个table并载入数据**
+* 表1. 8K+
+* 表2. 80K+
+*	表3. 800K+
+*	表4. 8M+
+![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/5大批量实验001.png)
+
+
+* **掌握导入四种方式 踩了不少坑**
+  * 直接导入 如上图 要注意先创建有列的表格并一一对应导入 否则会出现失败回滚
+  * [bash] \copy
+  * [SQL] COPY
+  * pg_dump 功能和普通Import不同，更快更稳定
+
+
 # 实现了更大数据集的实验
 
 #### **后续的实验都是整批完成 实现了缓存清理（每轮重连数据库/重启）**
 ### 从Kaggle获取数据表8-Million-Lines
 
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c6ee14f3-1d33-4373-a2ff-e9a729ccbda0.png)
-
-### 导入csv
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/95ca68df-4ebd-407a-bdbc-5f453ecca779.png)
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/54788a15-b45d-48fd-8e2f-aef339c23ea9.png)
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/1698896b-0894-42db-8a7c-549d1c34a829.png)
 
 ## **\copy COPY 和 pg_dump IMPORT** (在这里走了很多弯路)
 
@@ -581,9 +607,6 @@ COPY movies FROM '______.csv' WITH CSV HEADER;
 ### 更快更稳定
 ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/889d1125-c110-4f94-9081-96a1f851f697.png)
 
-### **关于内存和时间的调整**
-
-![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/936fb094-781e-46fd-bcf3-a16508792e1f.png)
 
 ### 要导入的数据大小为2GB+
 ### 默认的750MB填满后就会回滚
