@@ -1,4 +1,4 @@
-# <p align="center">PDSProject1Report</p>
+# <p align="center">PDS Project1 Report</p>
 
 **<p align="center">Masen Wen</p>**
 **<p align="center">2025-10-18</p>**
@@ -15,17 +15,15 @@
   * [实验程序设计-计时功能](#实验程序设计-计时功能)
   * [实验程序设计-绘图功能](#实验程序设计-绘图功能)
 * 实验与分析
-  * [【缓存】Experiment01-重复3遍提速87倍证明Cache价值](#【缓存】Experiment01-重复3遍提速87倍证明Cache价值)
-  * [【缓存】Experiment02-干扰Cache命中率后无法提速证明Cache工作原理](#【缓存】Experiment02-干扰Cache命中率后无法提速证明Cache工作原理)
-  * [【查询优化器】Experiment03-不同SELECT语句查询计划相同证明DBMS有查询优化器](#【查询优化器】Experiment03-不同SELECT语句查询计划相同证明DBMS有查询优化器)
-  * [Experiment04-File与DB大数据集的查询性能比较](#Experiment04-File与DB大数据集的查询性能比较)
+  * [Experiment01——【缓存】重复3遍提速87倍证明Cache价值](#Experiment01——【缓存】重复3遍提速87倍证明Cache价值)
+  * [Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理](#Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理)
+  * [Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器](#Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器)
+  * [Experiment04——【使用工具】导入800万条记录](#Experiment04——【使用工具】导入800万条记录)
   * [Experiment05-File与DB大数据集的更新性能比较](#Experiment05-File与DB大数据集的更新性能比较)
   * [Experiment06-PgSQL与OpenGauss大数据集的读写性能比较](#Experiment06-PgSQL与OpenGauss大数据集的读写性能比较)
 
-
-
-
-
+  
+  
 ## 两个实验要求
 
 * **要求1：与文件中的数据操作相比，DBMS 的独特优势是什么？**
@@ -59,14 +57,14 @@
 
 **我的实验要体现出：**
 
-* **并发优势验证** 
-  * 这依赖于足够大的数据量 以及足够大量的读写（我想update操作会体现出端倪）
 * **缓存优势验证** 
   * 我会在进行实验之前对数据库进行"暖机"操作 即多次调用某一数据保证其被缓存（重连数据库清楚缓存可以体现其优化）
 * **查询优化器验证**
   *  我们编写一些逻辑较差的查询来体现查询优化器的作用（课上讲过的两个例子）
 * **索引机制研究**
   * PSQL和OpenGauss实现的索引机制
+* **并发优势验证** 
+  * 这依赖于足够大的数据量 以及足够大量的读写（我想update操作会体现出端倪）
 * **OpenGauss的优势是什么呢？要体现这种细微优势是有难度的**
   * 1. 超大型数据集（？存疑）
   * 2. 超大量Client的并发调取（单机实现不现实）
@@ -77,8 +75,8 @@
 
 
 
-
-
+  
+  
 ## 实验环境搭建
 
 * **程序骨架**
@@ -93,8 +91,8 @@
 
 ![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/1设计002.png)
 
-
-
+  
+  
 ## 下载PostgreSQL源代码
 
 * 下载PostgreSQL源码安装包
@@ -103,6 +101,7 @@
 ![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/2搭建002.png)
 
 
+  
   
 ## 实验程序设计-测试功能模块
 
@@ -116,7 +115,7 @@
       * @return的字符串是方法名称标记和耗时(nm)
     * 缓存干扰功能
       * void bustCache()模拟大量访问不同Table的操作“冲掉”上个实验的缓存数据
-  * 两个接口的实现类
+  * 接口的两个实现类
     * DatabaseManipulation实现类：采用DB存储
     * FileManipulation实现类：采用File存储
 
@@ -159,7 +158,6 @@ public interface DataManipulation {
     //            组3.调用Java代码查询    [执行较好的逻辑]
     //            组4.调用Java代码查询    [执行较差的逻辑]
     //       预期: 组1和2不应该有很大差别 组3慢很多 组4再慢很多
-    //
     public String findMovieByConstraintNationAndReleaseYear_usingGoodLogic(String nation, int year1, int year2);
     public String findMovieByConstraintNationAndReleaseYear_usingBadLogic(String nation, int year1, int year2);
 
@@ -186,8 +184,8 @@ public interface DataManipulation {
 ```
 
 
-
-
+  
+  
 ## 实验程序设计-计时功能
 
 在DataGrip中每条操作记录中有如下时间信息，但不方便对比:
@@ -214,8 +212,8 @@ public class MillisecondTimer {
     public long getElapsedTimeNanos() {...}
 }
 ```
-
-
+  
+  
 ## 实验程序设计-绘图功能
 ```Java
 import matplotlib.pyplot as plt
@@ -250,9 +248,9 @@ plt.tight_layout()
 plt.show()
 ```
 
-
-
-## **【缓存】Experiment01-重复3遍提速87倍证明Cache价值**  
+  
+  
+## **Experiment01——【缓存】重复3遍提速87倍证明Cache价值**  
 
 * **SELECT * FROM movies WHERE title = 'Star Wars'的实验程序**
   * 连续查询3遍
@@ -288,15 +286,15 @@ plt.show()
   * DB查询
     * 第1遍9961900ns
     * 第3遍 113800ns。提速87倍，证明了DB Cache的价值
- * 现实意义:
-   * 这样的例子提醒我们要善于利用Cache机制设计和运用数据库调用
-   * 在我最初的设想里，DBMS系统最大的性能优势应该是源于并发，而缓存(Cache)只是次之。但一些在movies和people上的小实验（这两个表都只有10000行左右的数据）和重复调试代码的过程让我注意到了**随着重复次数的增加**同一查询的执行时间明显依次递减。以找到"Star Wars"这一部电影的查询为例，缓存（重复执行三次）提升了效率**87倍**，显然DBMS的缓存模块“记住”了这部电影。 
-   * 相应的，在找到"Star Wars"系列电影时，“记忆”就不那么强烈。
- * 后续实验，我要尝试实现了一个bustCache()函数，干扰Cache效率
+* **现实意义**
+  * 这样的例子提醒我们要善于利用Cache机制设计和运用数据库调用
+  * 在我最初的设想里，DBMS系统最大的性能优势应该是源于并发，而缓存(Cache)只是次之。但一些在movies和people上的小实验（这两个表都只有10000行左右的数据）和重复调试代码的过程让我注意到了**随着重复次数的增加**同一查询的执行时间明显依次递减。以找到"Star Wars"这一部电影的查询为例，缓存（重复执行三次）提升了效率**87倍**，显然DBMS的缓存模块“记住”了这部电影。 
+  * 相应的，在找到"Star Wars"系列电影时，“记忆”就不那么强烈。
+* 后续实验，我要尝试实现了一个bustCache()函数，干扰Cache效率
 
-
-
-## **【缓存】Experiment02-干扰Cache命中率后无法提速证明Cache工作原理**  
+  
+  
+## **Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理**  
 
 * **step1-编写bustCache()函数**
   * 设计思想是：多个查询分别查询不同table，这样才能使Cache数据快速失效，分散Cache“注意力”
@@ -402,9 +400,9 @@ sudo systemctl restart postgresql
 
 
 
-
-
-## **【查询优化器】Experiment03-不同SELECT语句查询计划相同证明DBMS有查询优化器**  
+  
+  
+## **Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器**  
 
 * **下列两个查询：**
   * 第二个语句的逻辑被认为”本应该“更好，命名为GoodLogic
@@ -505,9 +503,9 @@ EXPLAIN ANALYSIS [Execution Plan][Query Plan]
 
 
 
-
-
-## **【工具使用】Experiment04-导入800万条记录**  
+  
+  
+## **Experiment04——【使用工具】导入800万条记录**  
 
 * **Step1：从Kaggle获取数据表8-Million-Lines的csv数据文件**
  ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c6ee14f3-1d33-4373-a2ff-e9a729ccbda0.png)
