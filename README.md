@@ -17,13 +17,13 @@
   * [实验程序设计-计时功能](#实验程序设计-计时功能)
   * [实验程序设计-绘图功能](#实验程序设计-绘图功能)
 * 实验与分析
-  * [Experiment01——【缓存】重复3遍提速87倍证明Cache价值](#Experiment01——【缓存】重复3遍提速87倍证明Cache价值)
-  * [Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理](#Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理)
-  * [Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器](#Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器)
-  * [Experiment04——【使用工具】导入800万条记录](#Experiment04——【使用工具】导入800万条记录)
-  * [Experiment05——【大数据集】8千到800万条数据的查询、修改性能](#Experiment05——【大数据集】8千到800万条数据的查询、修改性能)
-  * [Experiment06——【并行】Postgresql并行执行](#Experiment06——【并行】Postgresql并行执行)
-  * [Experiment07——PgSQL与OpenGauss大数据集的读写性能比较](#Experiment07——PgSQL与OpenGauss大数据集的读写性能比较)
+  * [Experiment01—【缓存】重复3遍提速87倍证明Cache价值](#Experiment01—【缓存】重复3遍提速87倍证明Cache价值)
+  * [Experiment02—【缓存】干扰Cache命中率后无法提速证明Cache工作原理](#Experiment02—【缓存】干扰Cache命中率后无法提速证明Cache工作原理)
+  * [Experiment03—【优化器】不同SELECT语句查询计划相同证明DBMS有优化器](#Experiment03—【优化器】不同SELECT语句查询计划相同证明DBMS有优化器)
+  * [Experiment04—【使用工具】导入800万条记录](#Experiment04—【使用工具】导入800万条记录)
+  * [Experiment05—【大数据集】8千到800万条数据的查询、修改性能](#Experiment05—【大数据集】8千到800万条数据的查询、修改性能)
+  * [Experiment06—【并行】Postgresql并行执行](#Experiment06—【并行】Postgresql并行执行)
+  * [Experiment07—PgSQL与OpenGauss大数据集的读写性能比较](#Experiment07—PgSQL与OpenGauss大数据集的读写性能比较)
 
 
 
@@ -256,7 +256,7 @@ plt.show()
 
 ---
 
-## **Experiment01——【缓存】重复3遍提速87倍证明Cache价值**  
+## **Experiment01—【缓存】重复3遍提速87倍证明Cache价值**  
 
 * **SELECT * FROM movies WHERE title = 'Star Wars'的实验程序**
   * 连续查询3遍
@@ -301,7 +301,7 @@ plt.show()
 
 ---
 
-## **Experiment02——【缓存】干扰Cache命中率后无法提速证明Cache工作原理**  
+## **Experiment02—【缓存】干扰Cache命中率后无法提速证明Cache工作原理**  
 
 * **step1-编写bustCache()函数**
   * 设计思想是：多个查询分别查询不同table，这样才能使Cache数据快速失效，分散Cache“注意力”
@@ -409,7 +409,7 @@ sudo systemctl restart postgresql
 
 ---
 
-## **Experiment03——【优化器】不同SELECT语句查询计划相同证明DBMS有优化器**  
+## **Experiment03—【优化器】不同SELECT语句查询计划相同证明DBMS有优化器**  
 
 * **下列两个查询：**
   * 第二个语句的逻辑被认为”本应该“更好，命名为GoodLogic
@@ -513,7 +513,7 @@ public String findMovieByConstraintNationAndReleaseYear_usingGoodLogic(String na
 
 ---
 
-## **Experiment04——【使用工具】导入800万条记录**  
+## **Experiment04—【使用工具】导入800万条记录**  
 
 * **Step1：从Kaggle获取数据表8-Million-Lines的csv数据文件**
  ![image.png](https://raw.githubusercontent.com/MasenWen/My-Objects/refs/heads/main/PDSProject1Report/c6ee14f3-1d33-4373-a2ff-e9a729ccbda0.png)
@@ -587,7 +587,7 @@ rate_code | store_and_forward | end_lon | end_lat | payment_type | fare_amt | su
 
 ---
 
-## **Experiment05——【大数据集】8千到800万条数据的查询、修改性能**  
+## **Experiment05—【大数据集】8千到800万条数据的查询、修改性能**  
 
 * **8千到800万条数据的查询性能比较**
   * 运行实验
@@ -621,7 +621,7 @@ rate_code | store_and_forward | end_lon | end_lat | payment_type | fare_amt | su
 
 ---
 
-## **Experiment06——【并行】Postgresql并行执行**  
+## **Experiment06—【并行】Postgresql并行执行**  
 
 
 * **并行和批量操作**
@@ -649,7 +649,7 @@ rate_code | store_and_forward | end_lon | end_lat | payment_type | fare_amt | su
 
 ---
 
-## **Experiment07——PgSQL与OpenGauss大数据集的读写性能比较**
+## **Experiment07—PgSQL与OpenGauss大数据集的读写性能比较**
 
 
 * **就我的感性认识而言，OpenGauss对格式/输入/操作质量的要求都远远更高**
