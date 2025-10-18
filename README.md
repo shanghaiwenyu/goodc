@@ -4,6 +4,8 @@
 **<p align="center">2025-10-18</p>**
 
 
+---
+
 ## Table of Contents
 * 实验要求与思路整理
   * [两个实验要求](#两个实验要求)
@@ -22,8 +24,8 @@
   * [Experiment05-File与DB大数据集的更新性能比较](#Experiment05-File与DB大数据集的更新性能比较)
   * [Experiment06-PgSQL与OpenGauss大数据集的读写性能比较](#Experiment06-PgSQL与OpenGauss大数据集的读写性能比较)
 
-  
-  
+---
+
 ## 两个实验要求
 
 * **要求1：与文件中的数据操作相比，DBMS 的独特优势是什么？**
@@ -37,10 +39,9 @@
   * 在这个部分分析“数据重组”创建索引的价值
   * 在有条件的情况下 使用尽可能大的数据集
 
-
+---
 
 ## 实验设计思路
-
 
 **根据我对DBMS优势的理解：**
 
@@ -74,9 +75,8 @@
 
 
 
+---
 
-  
-  
 ## 实验环境搭建
 
 * **程序骨架**
@@ -91,8 +91,10 @@
 
 ![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/1设计002.png)
 
-  
-  
+
+
+---
+
 ## 下载PostgreSQL源代码
 
 * 下载PostgreSQL源码安装包
@@ -101,8 +103,9 @@
 ![image.png](https://raw.githubusercontent.com/shanghaiwenyu/goodc/refs/heads/main/2搭建002.png)
 
 
-  
-  
+
+---
+ 
 ## 实验程序设计-测试功能模块
 
 * **测试功能模块设计**
@@ -118,7 +121,6 @@
   * 接口的两个实现类
     * DatabaseManipulation实现类：采用DB存储
     * FileManipulation实现类：采用File存储
-
 
 ```Java
 //
@@ -184,8 +186,8 @@ public interface DataManipulation {
 ```
 
 
-  
-  
+---
+
 ## 实验程序设计-计时功能
 
 在DataGrip中每条操作记录中有如下时间信息，但不方便对比:
@@ -212,8 +214,9 @@ public class MillisecondTimer {
     public long getElapsedTimeNanos() {...}
 }
 ```
-  
-  
+
+---
+
 ## 实验程序设计-绘图功能
 ```Java
 import matplotlib.pyplot as plt
@@ -248,8 +251,8 @@ plt.tight_layout()
 plt.show()
 ```
 
-  
-  
+---
+
 ## **Experiment01——【缓存】重复3遍提速87倍证明Cache价值**  
 
 * **SELECT * FROM movies WHERE title = 'Star Wars'的实验程序**
